@@ -25,8 +25,8 @@ def modeldict_to_modeldf(model):
 class ModelDAG( object ):
     """
     Models are dict of arguments that may have 3 entries:
-    model = {key1 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
-             key2 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
+    model = {key1 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
+             key2 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
              ...
              }
     
@@ -340,7 +340,7 @@ class ModelDAG( object ):
             prop["size"] = size
             
         if "model" in func_arguments and model is not None: # means you left the default
-            prop["model"] = model
+            prop["func"] = model
 
         if "xx" in func_arguments and xx is not None: # if xx is None
             if type(xx) == str: # assumed r_ input
@@ -398,7 +398,7 @@ class ModelDAG( object ):
                     params["size"] = None
                     
             # set the model ; this overwrite prop['model'] but that make sense.
-            inprop["model"] = param_model.get("model", None)
+            inprop["func"] = param_model.get("func", None)
             
             # update the general properties for that of this parameters
             prop = {**params, **inprop}
