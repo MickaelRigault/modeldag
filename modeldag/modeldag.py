@@ -10,22 +10,25 @@ def modeldict_to_modeldf(model):
     """ """
     dd = pandas.DataFrame(list(model.values()), 
                           index=model.keys()).reset_index(names=["model_name"])
-    # naming convention
-    f_ = dd["as"].fillna(dict(dd["model_name"]))
-    f_.name = "entry"
-    # merge and explode the names and inputs
-    return dd.join(f_)
+    if "as" not in dd:
+        dd["as"] = dd["model_name"]
+        dd["entry"] = dd["as"]
+    else:
+        # naming convention
+        f_ = dd["as"].fillna( dict(dd["model_name"]) )
+        f_.name = "entry"
+        dd = dd.join(f_) # merge and explode the names and inputs
+        
+    return dd
 
 
 class ModelDAG( object ):
     """
     Models are dict of arguments that may have 3 entries:
-    {
-    "element_1":{model:func, kwargs: dict, as: str_or_list},
-    "element_2":{model:func, param: dict, as: str_or_list},
-    "element_3":{model:func, param: dict, as: str_or_list},
-    ...
-    }
+    model = {key1 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
+             key2 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
+             ...
+             }
     
     """
     def __init__(self, model={}, obj=None):
