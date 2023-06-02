@@ -9,6 +9,11 @@ DataFrame generator through simple dictionary forming a direct acyclic graph (DA
 pip install modeldag
 ```
 
+## Dependency
+- numpy
+- pandas
+- graphviz (optional, used for visualize)
+
 # Concept
 
 Build a simple dictionary forming a DAG ; this is the `model` and call `mdag = ModelDAG(model)`.
@@ -21,7 +26,7 @@ model = {key1 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
          }
 ```
 
-ModelDAG will read this dictionary to create a pandas.DataFrame with each column called `as` (if as is None, as is set to key).
+ModelDAG will read this dictionary to create a pandas.DataFrame with each column called `as` (if given else it is named as `key`).
 The dataframe columns are generated calling `func(**kwargs)`. 
 
 **The trick** of *modeldag* is that you can use `"@key1"` in kwargs of `key2` to use key1 generated values as input of key2 model.
