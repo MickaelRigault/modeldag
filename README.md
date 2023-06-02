@@ -15,14 +15,14 @@ Build a simple dictionary forming a DAG ; this is the `model` and call `mdag = M
 
 The model dictionary is a simple nested directory with the following format: 
 ```python
-model = {key1 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
-         key2 : {'model': func, 'kwargs': dict, 'as': None_str_list'},
+model = {key1 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
+         key2 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
          ...
          }
 ```
 
 ModelDAG will read this dictionary to create a pandas.DataFrame with each column called `as` (if as is None, as is set to key).
-The dataframe columns are generated calling `model(**kwargs)`. 
+The dataframe columns are generated calling `func(**kwargs)`. 
 
 **The trick** of *modeldag* is that you can use `"@key1"` in kwargs of `key2` to use key1 generated values as input of key2 model.
 
@@ -38,11 +38,11 @@ def foo(value, scale=0.05, floor=0.2):
     return np.sqrt( (value*scale)**2 + floor**2)
 
 
-model = {"a": {"model": np.random.normal,
+model = {"a": {"func": np.random.normal,
                "kwargs": {"loc":10, "scale":2}
               },
-        "a_err": {"model": foo,
-                   "kwargs": {"value":"@a"} # leaving other param unchanged
+        "a_err": {"func": foo,
+                  "kwargs": {"value":"@a"} # leaving other param unchanged
               }
         }
 
