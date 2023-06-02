@@ -300,7 +300,7 @@ class ModelDAG( object ):
         return self._draw(model, size=size, limit_to_entries=limit_to_entries,
                               data=data)
     
-    def draw_param(self, name=None, model=None, size=None, xx=None, **kwargs):
+    def draw_param(self, name=None, func=None, size=None, xx=None, **kwargs):
         """ draw a single entry of the model
 
         Parameters
@@ -308,7 +308,7 @@ class ModelDAG( object ):
         name: str
             name of the variable
             
-        model_func: str, function
+        func: str, function
             what model should be used to draw the parameter
 
         size: int
@@ -325,7 +325,7 @@ class ModelDAG( object ):
             
         """
         # Flexible origin of the sampling method
-        func = self._parse_inputmodel_func(name=name, model=model)
+        func = self._parse_inputmodel_func(name=name, func=func)
         
         # Check the function parameters
         try:
@@ -415,20 +415,20 @@ class ModelDAG( object ):
 
         return data
     
-    def _parse_inputmodel_func(self, name=None, model=None):
+    def _parse_inputmodel_func(self, name=None, func=None):
         """ returns the function associated to the input model.
 
         """
-        if callable(model): # model is a function. Good to go.
-            return model
+        if callable(func): # model is a function. Good to go.
+            return func
         
         # model is a method of this instance ?
-        if model is not None and hasattr(self, model):
-            func = getattr(self, model)
+        if model is not None and hasattr(self, func):
+            func = getattr(self, func)
             
         # model is a method a given object ?
-        elif model is not None and hasattr(self.obj, model):
-            func = getattr(self.obj, model)
+        elif model is not None and hasattr(self.obj, func):
+            func = getattr(self.obj, func)
             
         # name is a draw_ method of this instance object ?            
         elif hasattr(self, f"draw_{name}"):
@@ -440,9 +440,9 @@ class ModelDAG( object ):
         
         else:
             try:
-                func = eval(model) # if you input a string of a function known by python somehow ?
+                func = eval(func) # if you input a string of a function known by python somehow ?
             except:
-                raise ValueError(f"Cannot parse the input function {name}:{model}")
+                raise ValueError(f"Cannot parse the input function {name}:{func}")
         
         return func
 
