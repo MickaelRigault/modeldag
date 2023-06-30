@@ -16,7 +16,7 @@ pip install modeldag
 
 # Concept
 
-Build a simple dictionary forming a DAG ; this is the `model` and call `mdag = ModelDAG(model)`.
+Build a simple dictionary forming a DAG (this is the `model`) and call `mdag = ModelDAG(model)`.
 
 The model dictionary is a simple nested directory with the following format: 
 ```python
