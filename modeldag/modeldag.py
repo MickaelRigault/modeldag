@@ -21,7 +21,6 @@ def modeldict_to_modeldf(model):
         
     return dd
 
-
 class ModelDAG( object ):
     """
     Models are dict of arguments that may have 3 entries:
@@ -124,7 +123,7 @@ class ModelDAG( object ):
 
         **kwargs can change the model entry parameters
             for istance, t0: {"low":0, "high":10}
-            will update model["t0"]["param"] = ...
+            will update model["t0"]["kwargs"] = ...
 
         Returns
         -------
@@ -133,14 +132,14 @@ class ModelDAG( object ):
         """
         model = deepcopy(self.model)
         for k,v in kwargs.items():
-            model[k]["param"].update(v)
+            model[k]["kwargs"] = {**model[k].get("kwargs",{}), **v}
 
         return model
     
     def change_model(self, **kwargs):
         """ change the model attached to this instance
         
-        **kwargs will update the entry  parameters ("param", e.g. t0["param"])
+        **kwargs will update the entry  parameters ("param", e.g. t0["kwargs"])
 
         See also
         --------
@@ -148,6 +147,31 @@ class ModelDAG( object ):
         """
         self.model = self.get_model(**kwargs)
 
+    def get_func_parameters(self, valdefault="unknown"):
+        """ get a dictionary with the parameters name of all model functions
+        
+        Parameters
+        ----------
+        valdefault: str, None
+            value used with function inspection fails
+            (like e.g. np.random.rand).
+
+        Returns
+        -------
+        dict
+        """
+        import inspect
+        inspected = {}
+        for k, m in self.model.items():
+            func = self._parse_input_func(name=k, func=m.get("func", None))
+            try:
+                params = inspect.getfullargspec(func).args
+            except:
+                params = valdefault
+            inspected[k] = params
+
+        return inspected
+    
     def get_backward_entries(self, name, incl_input=True):
         """ get the list of entries that affects the input on.
         Changing any of the return entry name impact the given name.
@@ -309,13 +333,13 @@ class ModelDAG( object ):
             name of the variable
             
         func: str, function
-            what model should be used to draw the parameter
+            what func should be used to draw the parameter
 
         size: int
             number of line to be draw
 
         xx: str, array
-           provide this *if* the model_func returns the pdf and not sampling.
+           provide this *if* the func returns the pdf and not sampling.
            xx defines where the pdf will be evaluated.
            if xx is a string, it will be assumed to be a np.r_ entry (``np.r_[xx]``)
 
@@ -325,13 +349,13 @@ class ModelDAG( object ):
             
         """
         # Flexible origin of the sampling method
-        func = self._parse_inputmodel_func(name=name, func=func)
+        func = self._parse_input_func(name=name, func=func)
         
         # Check the function parameters
         try:
             func_arguments = list(inspect.getfullargspec(func).args)
         except: # fail for Cython functions
-            #warnings.warn(f"inspect failed for {name}{model} -> {func}")
+            #warnings.warn(f"inspect failed for {name}{func} -> {func}")
             func_arguments = ["size"] # let's assume this as for numpy.random or scipy.
 
         # And set the correct parameters
@@ -339,8 +363,8 @@ class ModelDAG( object ):
         if "size" in func_arguments:
             prop["size"] = size
             
-        if "model" in func_arguments and model is not None: # means you left the default
-            prop["func"] = model
+        if "func" in func_arguments and func is not None: # means you left the default
+            prop["func"] = func
 
         if "xx" in func_arguments and xx is not None: # if xx is None
             if type(xx) == str: # assumed r_ input
@@ -415,19 +439,19 @@ class ModelDAG( object ):
 
         return data
     
-    def _parse_inputmodel_func(self, name=None, func=None):
-        """ returns the function associated to the input model.
+    def _parse_input_func(self, name=None, func=None):
+        """ returns the function associated to the input func.
 
         """
-        if callable(func): # model is a function. Good to go.
+        if callable(func): # func is a function. Good to go.
             return func
         
-        # model is a method of this instance ?
-        if model is not None and hasattr(self, func):
+        # func is a method of this instance ?
+        if func is not None and hasattr(self, func):
             func = getattr(self, func)
             
-        # model is a method a given object ?
-        elif model is not None and hasattr(self.obj, func):
+        # func is a method a given object ?
+        elif func is not None and hasattr(self.obj, func):
             func = getattr(self.obj, func)
             
         # name is a draw_ method of this instance object ?            
