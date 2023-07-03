@@ -1,4 +1,5 @@
 [![PyPI](https://img.shields.io/pypi/v/modeldag.svg?style=flat-square)](https://pypi.python.org/pypi/modeldag)
+[![Documentation Status](https://readthedocs.org/projects/modeldag/badge/?version=latest)](https://modeldag.readthedocs.io/en/latest/?badge=latest)
 
 # modeldag
 DataFrame generator through simple dictionary forming a direct acyclic graph (DAG)
