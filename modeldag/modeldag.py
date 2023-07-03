@@ -386,7 +386,16 @@ class ModelDAG( object ):
         if type(xx) == str: # assumed r_ input
             xx = eval(f"np.r_[{xx}]")
 
-        return np.random.choice(xx, size=size, p=pdf/pdf.sum())
+        pdf = np.squeeze(pdf) # shape -> (1, size) -> (size,)
+        
+        if len( pdf.shape ) == 2:
+            choices = np.hstack([np.random.choice(xx, size=1, p=pdf_/pdf_.sum())
+                           for pdf_ in pdf])
+        else:
+            choices = np.random.choice(xx, size=size, p=pdf/pdf.sum())
+
+        return choices
+    
 
     def _draw(self, model, size=None, limit_to_entries=None, data=None):
         """ core method converting model into a DataFrame (interp) """
