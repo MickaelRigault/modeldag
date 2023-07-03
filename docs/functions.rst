@@ -2,13 +2,15 @@ Functions
 ======
 
 
-In modeldag_, there are 4 different funtional forms that are accepted for ``func``, and different function locations for:
+In modeldag_, there are 4 different funtional forms that are accepted as input of the ``func`` parameter:
 
 .. code-block:: python
 		
     model = {'a': {'func': func, 'kwargs': dict, 'as': None_str_list'},
              'b': {'func': func, 'kwargs': dict, 'as': None_str_list'}
              }
+
+It is also flexible on where the function can be defined (see below *#Function locations*)
 
 For each of them, ``ModelDag.draw()`` will know how to fill the dataframe columns.
 
