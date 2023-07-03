@@ -26,12 +26,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath('..'))
-for x in os.walk('../skysurvey'):
+for x in os.walk('../modeldag'):
   sys.path.insert(0, x[0])
 
-
-from skysurvey import *
-from skysurvey import target
+from modeldag import *
 
 
 
