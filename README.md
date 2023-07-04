@@ -55,9 +55,8 @@ model = {"a": {"func": np.random.normal,
 mdag = modeldag.ModelDAG(model)
 mdag.visualize()
 ```
-<p align="left">
-  <img src="_images/visualize.png" width="100" title="show_target">
-</p>
+
+![](gallery/visualize.png)
 
 ```python
 data = mdag.draw(1000)

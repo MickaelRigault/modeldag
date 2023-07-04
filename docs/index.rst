@@ -11,7 +11,10 @@ Tutorials
 
 .. toctree::
    :maxdepth: 2
-   :caption: How to
+   :caption: Learn more about
 
 
    functions
+   notebooks/interest_of_as
+   
+   

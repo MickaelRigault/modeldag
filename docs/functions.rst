@@ -1,5 +1,5 @@
-Functions
-======
+all functions format for ``func``
+====================
 
 
 In modeldag_, there are 4 different funtional forms that are accepted as input of the ``func`` parameter:
