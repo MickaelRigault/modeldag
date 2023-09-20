@@ -115,14 +115,20 @@ class ModelDAG( object ):
         ag.draw(fileout)
         return SVG(fileout)
 
-    def get_model(self, **kwargs):
+    def get_model(self, funcs={}, **kwargs):
         """ get a copy of the model 
         
         Parameters
         ----------
+        funcs: dict
+            change the model's entry function:
+            for instance change "a" to a uniform distribution
+            funcs={"a": np.random.uniform}
+            make sure to update the kwargs accordingly.
+            for instance, t0: {"low":0, "high":10}
 
         **kwargs can change the model entry parameters
-            for istance, t0: {"low":0, "high":10}
+            for instance, t0: {"low":0, "high":10}
             will update model["t0"]["kwargs"] = ...
 
         Returns
@@ -270,8 +276,8 @@ class ModelDAG( object ):
 
         Parameters
         ----------
-        name: str
-            entry name. See self.entries
+        name: str, list
+            entry name or names. See self.entries
 
         data: pandas.DataFrame
             data to be updated 
@@ -292,7 +298,19 @@ class ModelDAG( object ):
             the updated version of the input data.
 
         """
-        limit_to_entries = self.get_forward_entries(name, incl_input=incl_name)
+        if len(np.atleast_1d(name)) > 1: # several entries
+            # do not include the input entry at fist
+            name = list(np.atleast_1d(name)) # as list 
+            limit_to_entries = [self.get_forward_entries(name_, incl_input=False) for name_ in name]
+            limit_to_entries = list(np.unique(np.concatenate(limit_to_entries))) # unique
+            if np.any([name_ in limit_to_entries for name_ in name]): # means some entry want to change another given
+                raise ValueError("At least on of the input name have at least one other given as forward entry. This is not supported by this method.")
+            
+            if incl_name:
+                limit_to_entries += name
+        else:
+            limit_to_entries = self.get_forward_entries(name, incl_input=incl_name)
+            
         return self.draw(size, limit_to_entries=limit_to_entries, data=data)
 
     
