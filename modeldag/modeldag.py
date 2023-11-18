@@ -2,7 +2,7 @@ import numpy as np
 import pandas
 import inspect
 import warnings
-from copy import deepcopy
+
 
 #__all__ = ["ModelDAG"]
 
@@ -20,6 +20,13 @@ def modeldict_to_modeldf(model):
         dd = dd.join(f_) # merge and explode the names and inputs
         
     return dd
+
+def get_modelcopy(model):
+    """ """
+    import copy
+    return {k:copy.copy(v) if type(v) != dict else \
+                  {k_:copy.copy(v_) for k_,v_ in v.copy().items()}
+           for k,v in model.copy().items()}
 
 class ModelDAG( object ):
     """
@@ -136,7 +143,7 @@ class ModelDAG( object ):
         dict
            a copy of the model (with param potentially updated)
         """
-        model = deepcopy(self.model)
+        model = get_modelcopy(self.model)
         for k,v in kwargs.items():
             model[k]["kwargs"] = {**model[k].get("kwargs",{}), **v}
 
@@ -259,7 +266,8 @@ class ModelDAG( object ):
         pandas.DataFrame
         """
         modeldf = modeldict_to_modeldf(self.model)
-        modeldf["input"] = modeldf["kwargs"].apply(lambda x: [] if type(x) is not dict else [l.split("@")[-1].split(" ")[0] for l in x.values() if type(l) is str and "@" in l])
+        modeldf["input"] = modeldf["kwargs"].apply(lambda x: [] if type(x) is not dict else \
+                                                       [l.split("@")[-1].split(" ")[0] for l in x.values() if type(l) is str and "@" in l])
         if not explode:
             return modeldf.explode("entry").set_index("entry")
         
@@ -365,7 +373,7 @@ class ModelDAG( object ):
         -------
         list 
             
-        """
+        """        
         # Flexible origin of the sampling method
         func = self._parse_input_func(name=name, func=func)
         
@@ -376,7 +384,14 @@ class ModelDAG( object ):
             #warnings.warn(f"inspect failed for {name}{func} -> {func}")
             func_arguments = ["size"] # let's assume this as for numpy.random or scipy.
 
-        # And set the correct parameters
+        # -> save function that are purely
+        actual_args = [l for l in func_arguments if l not in ["self"]]
+        if len(actual_args) == 0 and size is not None: # pure *arg, **kwargs func. like scipy's rvs() | assume size
+            func_arguments += ["size"] # add size.
+            
+
+                
+        # And set the correct parameters that may be missing
         prop = {}
         if "size" in func_arguments:
             prop["size"] = size
@@ -418,7 +433,7 @@ class ModelDAG( object ):
     def _draw(self, model, size=None, limit_to_entries=None, data=None):
         """ core method converting model into a DataFrame (interp) """
         
-        model = deepcopy(model) # safe case
+        model = get_modelcopy(model) # safe case
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
             return pandas.DataFrame(columns=columns)
@@ -431,7 +446,6 @@ class ModelDAG( object ):
         #
         # The draw loop
         #
-        
         for param_name, param_model in model.items():
             if limit_to_entries is not None and param_name not in limit_to_entries:
                 continue
@@ -453,7 +467,6 @@ class ModelDAG( object ):
             
             # update the general properties for that of this parameters
             prop = {**params, **inprop}
-
             # 
             # Draw it
             samples = np.asarray(self.draw_param(param_name, **prop))
