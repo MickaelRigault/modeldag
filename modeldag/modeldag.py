@@ -2,31 +2,9 @@ import numpy as np
 import pandas
 import inspect
 import warnings
-
+from .tools import get_modelcopy
 
 #__all__ = ["ModelDAG"]
-
-def modeldict_to_modeldf(model):
-    """ """
-    dd = pandas.DataFrame(list(model.values()), 
-                          index=model.keys()).reset_index(names=["model_name"])
-    if "as" not in dd:
-        dd["as"] = dd["model_name"]
-        dd["entry"] = dd["as"]
-    else:
-        # naming convention
-        f_ = dd["as"].fillna( dict(dd["model_name"]) )
-        f_.name = "entry"
-        dd = dd.join(f_) # merge and explode the names and inputs
-        
-    return dd
-
-def get_modelcopy(model):
-    """ """
-    import copy
-    return {k:copy.copy(v) if type(v) != dict else \
-                  {k_:copy.copy(v_) for k_,v_ in v.copy().items()}
-           for k,v in model.copy().items()}
 
 class ModelDAG( object ):
     """
@@ -122,18 +100,11 @@ class ModelDAG( object ):
         ag.draw(fileout)
         return SVG(fileout)
 
-    def get_model(self, funcs={}, **kwargs):
+    def get_model(self, **kwargs):
         """ get a copy of the model 
         
         Parameters
         ----------
-        funcs: dict
-            change the model's entry function:
-            for instance change "a" to a uniform distribution
-            funcs={"a": np.random.uniform}
-            make sure to update the kwargs accordingly.
-            for instance, t0: {"low":0, "high":10}
-
         **kwargs can change the model entry parameters
             for instance, t0: {"low":0, "high":10}
             will update model["t0"]["kwargs"] = ...
@@ -143,11 +114,14 @@ class ModelDAG( object ):
         dict
            a copy of the model (with param potentially updated)
         """
+        from .tools import make_model_direct
+        
         model = get_modelcopy(self.model)
         for k,v in kwargs.items():
             model[k]["kwargs"] = {**model[k].get("kwargs",{}), **v}
 
-        return model
+        direct_model = make_model_direct(model, missing_entries="raise")
+        return direct_model
     
     def change_model(self, **kwargs):
         """ change the model attached to this instance
@@ -252,26 +226,30 @@ class ModelDAG( object ):
 
         return forward_entries
 
-
-    def get_modeldf(self, explode=True):
+    def get_modeldf(self, explode=True, model=None):
         """ get a pandas.DataFrame version of the model dict
 
         Parameters
         ----------
         explode: bool
             should the input entry be exploded ?
-
+            
+        model: dict 
+            if given, the modeldf will be that of this model,
+            otherwise it uses self.model.
         Returns
         -------
         pandas.DataFrame
         """
-        modeldf = modeldict_to_modeldf(self.model)
-        modeldf["input"] = modeldf["kwargs"].apply(lambda x: [] if type(x) is not dict else \
-                                                       [l.split("@")[-1].split(" ")[0] for l in x.values() if type(l) is str and "@" in l])
-        if not explode:
-            return modeldf.explode("entry").set_index("entry")
+        from .tools import get_modeldf
+        if model is None:
+            model = self.model
+
+        modeldf = get_modeldf(explode=explode, model=model)
+        return modeldf
         
-        return modeldf.explode("entry").explode("input").set_index("entry")
+            
+            
         
     # ============ #
     #  Drawers     #
@@ -432,7 +410,6 @@ class ModelDAG( object ):
 
     def _draw(self, model, size=None, limit_to_entries=None, data=None):
         """ core method converting model into a DataFrame (interp) """
-        
         model = get_modelcopy(model) # safe case
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
