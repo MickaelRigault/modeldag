@@ -95,7 +95,7 @@ def get_modeldf(model, explode=True):
     
     return modeldf.explode("entry").explode("input").set_index("entry")
 
-def make_model_direct(model, missing_entries="raise"):
+def make_model_direct(model, missing_entries="raise", verbose=False, prior_inputs=None):
     """ re-organise the input dictionary input a direct graph model 
 
     Parameters
@@ -110,29 +110,45 @@ def make_model_direct(model, missing_entries="raise"):
         - 'warn': warnings
         - othersiwe: ValueError
 
+    prior_inputs: None, list
+        list of entry names assumed to be already known.
+        
     Returns
     -------
     dict
         new ordered model (same format but re-ordered)
     """
+    if prior_inputs is None:
+        prior_inputs = []
+    elif type(prior_inputs) is not list:
+        prior_inputs = list(prior_inputs)
     
     df = get_modeldf(model, explode=False) # get the dataframe for manipulation
+    if verbose:
+        print(f"model df: {df}")
     entries = list(df.index)
     
     roots = list(df[df["ndeps"]==0].index.astype(str)) # those depending on nothing
-    used_entries = roots.copy()
+    used_entries = roots.copy() + prior_inputs
     next_entries = ["bla"] # will go away
+    if verbose:
+        print(f"roots: {roots}")
+        
     # built the entries from their dependencies
     while len(next_entries) > 0:
         left_entries = [k for k in entries if k not in used_entries]
+        if verbose:
+            print(f"left entries: {left_entries}")
         next_entries = df.loc[left_entries]["input"].apply(lambda x: np.in1d(x, used_entries).all())
         next_entries = list(next_entries[next_entries].index.astype(str))
+        if verbose:
+            print(f"next entries: {next_entries}")
         used_entries = used_entries + next_entries
 
     # Test if the graph ok.
     not_used_entries = [k for k in entries if k not in used_entries]
     if len(not_used_entries) >0:
-        message = f"input model do not form a DAG. These entries {missing_entries} cannot make a 'direct' graph"
+        message = f"input model do not form a DAG. These entries {not_used_entries} cannot make a 'direct' graph"
         if missing_entries == "raise":
             raise ValueError(message)
         if missing_entries == "warn":
@@ -143,6 +159,8 @@ def make_model_direct(model, missing_entries="raise"):
             raise ValueError(message)
         
     # get the sorted model
+    if len(prior_inputs)>0:
+        used_entries = [e_ for e_ in used_entries if e_ not in prior_inputs]
     sorted_inname = df.loc[used_entries]["model_name"].unique()
     direct_model = {k:model[k] for k in sorted_inname}
     return direct_model

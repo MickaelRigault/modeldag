@@ -85,7 +85,6 @@ class ModelDAG( object ):
         """ shortcut to to_graph('graphviz') """
         return self.to_graph(engine="graphviz")
 
-
     # ============ #
     #   Method     #
     # ============ #
@@ -100,7 +99,7 @@ class ModelDAG( object ):
         ag.draw(fileout)
         return SVG(fileout)
 
-    def get_model(self, **kwargs):
+    def get_model(self, prior_inputs=None, missing_entries="raise", **kwargs):
         """ get a copy of the model 
         
         Parameters
@@ -120,7 +119,7 @@ class ModelDAG( object ):
         for k,v in kwargs.items():
             model[k]["kwargs"] = {**model[k].get("kwargs",{}), **v}
 
-        direct_model = make_model_direct(model, missing_entries="raise")
+        direct_model = make_model_direct(model, missing_entries=missing_entries, prior_inputs=prior_inputs)
         return direct_model
     
     def change_model(self, **kwargs):
@@ -248,9 +247,6 @@ class ModelDAG( object ):
         modeldf = get_modeldf(explode=explode, model=model)
         return modeldf
         
-            
-            
-        
     # ============ #
     #  Drawers     #
     # ============ #
@@ -324,7 +320,12 @@ class ModelDAG( object ):
         pandas.DataFrame
             N=size lines and at least 1 column per model entry
         """
-        model = self.get_model(**kwargs)
+        if data is not None:
+            prior_inputs = data.columns
+        else:
+            prior_inputs = None
+            
+        model = self.get_model(prior_inputs=prior_inputs, **kwargs)
         return self._draw(model, size=size, limit_to_entries=limit_to_entries,
                               data=data)
     
