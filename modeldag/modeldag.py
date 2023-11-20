@@ -2,7 +2,6 @@ import numpy as np
 import pandas
 import inspect
 import warnings
-from .tools import get_modelcopy
 
 #__all__ = ["ModelDAG"]
 
@@ -113,7 +112,7 @@ class ModelDAG( object ):
         dict
            a copy of the model (with param potentially updated)
         """
-        from .tools import make_model_direct
+        from .tools import make_model_direct, get_modelcopy
         
         model = get_modelcopy(self.model)
         for k,v in kwargs.items():
@@ -411,7 +410,6 @@ class ModelDAG( object ):
 
     def _draw(self, model, size=None, limit_to_entries=None, data=None):
         """ core method converting model into a DataFrame (interp) """
-        model = get_modelcopy(model) # safe case
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
             return pandas.DataFrame(columns=columns)
