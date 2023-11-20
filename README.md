@@ -27,10 +27,9 @@ model = {key1 : {'func': func, 'kwargs': dict, 'as': None_str_list'},
          }
 ```
 
-ModelDAG will read this dictionary to create a pandas.DataFrame with each column called `as` (if given else it is named as `key`).
-The dataframe columns are generated calling `func(**kwargs)`. 
+ModelDAG will read this dictionary to create a pandas.DataFrame with each column called `as` (if given, `key` is used as name otherwise ). The dataframe columns are generated calling `func(**kwargs)`. 
 
-**The trick** of *modeldag* is that you can use `"@key1"` in kwargs of `key2` to use key1 generated values as input of key2 model.
+**The trick** of *modeldag* is that you can use `"@key1"` in kwargs of `key2` to use key1 generated values as input of key2 model. Furthermore *modeldag* will sort the input dict to make sure keys are drawn in the good order, so combine models are you wish !
 
 # Sharp start
 
