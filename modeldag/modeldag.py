@@ -5,6 +5,36 @@ import warnings
 
 #__all__ = ["ModelDAG"]
 
+
+def draw_ndpdf(xx, ndpdf, size=1):
+    """ draw n-parameters for joint multivariate pdf
+    
+    Parameters
+    ----------
+    xx: array
+         array of definition for the pdf. format: (nx, ny, ndim)
+        
+    ndpdf: array
+        pdf of the multivariates. format: (ntargets, nx, ny)
+                 
+    Returns
+    -------
+    array 
+        format: (ndim, ntargets)
+    """
+    if len(xx.shape) != 3:
+        raise NotImplementedError(f"Only xx.shape (n, m, k) implemented. len(shape) input: {len(xx.shape)} ")
+
+    xxshape = np.prod(xx.shape[:-1])
+    xx_index = np.arange(xxshape)
+    xx_flatten = xx.reshape(xxshape, xx.shape[-1])
+    # shape of ndpdf: (ntarget, *xx.shape[:-1])
+    ndpdf_flatten = ndpdf.reshape(ndpdf.shape[0], np.prod(xx.shape[:-1]))
+    drawn_indexes = [np.random.choice(xx_index, size=size, p=pdf_/pdf_.sum())
+                     for pdf_ in ndpdf_flatten]
+    return xx_flatten[np.hstack(drawn_indexes)].T
+
+
 class ModelDAG( object ):
     """
     Models are dict of arguments that may have 3 entries:
@@ -43,7 +73,7 @@ class ModelDAG( object ):
         return self.__str__()
 
 
-    def to_graph(self, engine="networkx"):
+    def to_graph(self, engine="networkx", incl_param=False):
         """ converts the model into another graph library object 
 
         Parameters
@@ -74,24 +104,63 @@ class ModelDAG( object ):
         for name, to_name in self.entry_inputof.items():
             graph.add_edge(name, to_name)
 
+        if incl_param:
+            model_df = self.get_modeldf()["kwargs"]
+            kwargs_df = model_df.groupby(level=0).first() # remove exploded duplicates
+            default_kwargs = self.get_func_parameters()
+
+            # loop over nodes (model parameters)
+            for name, input_kwargs in kwargs_df.items():
+                if type(input_kwargs) != dict:
+                    input_kwargs = {} # fix Nans, Nones etc.
+                    
+                kwargs = default_kwargs.get(name, {}) | input_kwargs
+
+                param_text = ""
+                for k, v in kwargs.items():
+                    # ignore if internal connection.
+                    if "@" in str(v): 
+                        continue
+                    
+                    # If not, create an node and edge
+                    param_text += f"{k} = {v}"+"\n"
+
+                if param_text == "":
+                    continue # no entry
+                    
+                new_node = f"{name} input"
+                graph.add_edge(new_node, name)
+                new_edge = graph.get_edge(new_node, name)
+                # and make it look special.
+                # node
+                node = graph.get_node(new_node)
+                node.attr["fontsize"] = 10
+                node.attr["label"] = param_text
+                node.attr["fontcolor"] = "#ADADAD"
+                node.attr["shape"] = "plaintext"
+                # edge
+                new_edge.attr["color"] = "#ADADAD"
+                new_edge.attr["arrowhead"] = "none"
+                #arrowsize
+
         return graph
     
-    def to_networkx(self):
+    def to_networkx(self, incl_param=False):
         """ shortcut to to_graph('networkx') """
-        return self.to_graph(engine="networkx")
+        return self.to_graph(engine="networkx", incl_param=incl_param)
 
-    def to_graphviz(self):
+    def to_graphviz(self, incl_param=False):
         """ shortcut to to_graph('graphviz') """
-        return self.to_graph(engine="graphviz")
+        return self.to_graph(engine="graphviz", incl_param=incl_param)
 
     # ============ #
     #   Method     #
     # ============ #
-    def visualize(self, fileout="tmp_modelvisualize.svg"):
+    def visualize(self, fileout="tmp_modelvisualize.svg", incl_param=False):
         """ """
         from IPython.display import SVG
         
-        ag = self.to_graphviz()
+        ag = self.to_graphviz(incl_param=incl_param)
         ag.graph_attr["epsilon"] = "0.001"
         
         ag.layout("dot")  # layout with dot
@@ -132,7 +201,7 @@ class ModelDAG( object ):
         """
         self.model = self.get_model(**kwargs)
 
-    def get_func_parameters(self, valdefault="unknown"):
+    def get_func_parameters(self):
         """ get a dictionary with the parameters name of all model functions
         
         Parameters
@@ -150,10 +219,14 @@ class ModelDAG( object ):
         for k, m in self.model.items():
             func = self._parse_input_func(name=k, func=m.get("func", None))
             try:
-                params = inspect.getfullargspec(func).args
+                # ::-1 since kwargs are after args
+                params = inspect.getfullargspec( func ).args[::-1]
+                values = inspect.getfullargspec( func ).defaults[::-1]
+                kwargs_ = dict(zip(params, values))
             except:
-                params = valdefault
-            inspected[k] = params
+                kwargs_ = {}
+                
+            inspected[k] = kwargs_
 
         return inspected
     
@@ -402,6 +475,8 @@ class ModelDAG( object ):
         if len( pdf.shape ) == 2:
             choices = np.hstack([np.random.choice(xx, size=1, p=pdf_/pdf_.sum())
                            for pdf_ in pdf])
+        elif len( pdf.shape ) == 3: # assumed list of multivariate
+            choices = draw_ndpdf(xx, pdf) # not size.
         else:
             choices = np.random.choice(xx, size=size, p=pdf/pdf.sum())
 
