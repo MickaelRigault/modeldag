@@ -107,7 +107,7 @@ class ModelDAG( object ):
         if incl_param:
             model_df = self.get_modeldf()["kwargs"]
             kwargs_df = model_df.groupby(level=0).first() # remove exploded duplicates
-            default_kwargs = self.get_func_parameters()
+            default_kwargs = self.get_func_parameters(default=True)
 
             # loop over nodes (model parameters)
             for name, input_kwargs in kwargs_df.items():
@@ -201,14 +201,13 @@ class ModelDAG( object ):
         """
         self.model = self.get_model(**kwargs)
 
-    def get_func_parameters(self):
+    def get_func_parameters(self, default=False):
         """ get a dictionary with the parameters name of all model functions
         
         Parameters
         ----------
-        valdefault: str, None
-            value used with function inspection fails
-            (like e.g. np.random.rand).
+        default: bool
+            get the default model parameter without the model updates.
 
         Returns
         -------
@@ -228,7 +227,15 @@ class ModelDAG( object ):
                 
             inspected[k] = kwargs_
 
-        return inspected
+        # should we update the default func values ?
+        if not default:
+            current_model = self.get_model()
+            manual_kwargs = {k: v.get("kwargs",{}) for k,v in current_model.items()}
+            parameters = {k: inspected[k] | manual_kwargs[k] for k in current_model.keys() }
+        else:
+            parameters = inspected
+        
+        return parameters
     
     def get_backward_entries(self, name, incl_input=True):
         """ get the list of entries that affects the input on.
@@ -376,7 +383,6 @@ class ModelDAG( object ):
         ----------
         size: int
             number of elements you want to draw.
-
 
         limit_to_entries: list
             if given, entries not in this list will be ignored.
