@@ -16,5 +16,5 @@ Tutorials
 
    functions
    notebooks/interest_of_as
-   
+   notebooks/key_as_and_conflict
    

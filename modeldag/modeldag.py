@@ -44,7 +44,7 @@ class ModelDAG( object ):
              }
     
     """
-    def __init__(self, model={}, obj=None):
+    def __init__(self, model={}, obj=None, as_conflict="raise"):
         """ 
         
         Parameters
@@ -56,11 +56,17 @@ class ModelDAG( object ):
             instance the model is attached too. It may contain 
             method called by the DAG.
 
+        as_conflict: string
+            how the code should behave in case of naming conflict:
+            - raise: raises a ValueError
+            - warn: do a warning (warnings.warn) and skip.
+            - skip: do nothing initial dict, so original key part will be overwritten.
+
         Returns
         -------
         instance
         """
-        self.model = model
+        self.set_model( model, as_conflict=as_conflict)
         self.obj = obj
 
     def __str__(self):
@@ -71,8 +77,7 @@ class ModelDAG( object ):
     def __repr__(self):
         """ """
         return self.__str__()
-
-
+    
     def to_graph(self, engine="networkx", incl_param=False):
         """ converts the model into another graph library object 
 
@@ -153,9 +158,16 @@ class ModelDAG( object ):
         """ shortcut to to_graph('graphviz') """
         return self.to_graph(engine="graphviz", incl_param=incl_param)
 
+    
     # ============ #
     #   Method     #
     # ============ #
+    def set_model(self, model, as_conflict="raise"):
+        """ sets the model to the instance (inplace) applying basic validation. """
+        from .tools import _get_valid_model_
+        self._model = _get_valid_model_(model, as_conflict=as_conflict)
+    
+
     def visualize(self, fileout="tmp_modelvisualize.svg", incl_param=False):
         """ """
         from IPython.display import SVG
@@ -185,9 +197,11 @@ class ModelDAG( object ):
         
         model = get_modelcopy(self.model)
         for k,v in kwargs.items():
-            model[k]["kwargs"] = {**model[k].get("kwargs",{}), **v}
+            model[k]["kwargs"] = model[k].get("kwargs",{}) | v
 
-        direct_model = make_model_direct(model, missing_entries=missing_entries, prior_inputs=prior_inputs)
+        direct_model = make_model_direct( model,
+                                          missing_entries=missing_entries,
+                                          prior_inputs=prior_inputs)
         return direct_model
     
     def change_model(self, **kwargs):
@@ -570,6 +584,11 @@ class ModelDAG( object ):
     # =================== #
     #   Properties        #
     # =================== #
+    @property
+    def model(self):
+        """ the core element of the instance from which all are derived."""
+        return self._model
+    
     @property
     def entries(self):
         """ array of model entry names """

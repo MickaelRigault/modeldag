@@ -1,6 +1,7 @@
 import pandas
 import numpy as np
 
+
 def apply_gaussian_noise(errmodel, data):
     """ apply gaussian noise to current entries.
 
@@ -44,6 +45,78 @@ def apply_gaussian_noise(errmodel, data):
 # =================== #
 #  model manipulation #
 # =================== #
+def _as_to_key_to_pop_(key_or_as, past_as, conflict="raise"):
+    """ """
+    if key_or_as not in past_as:
+        return None
+
+    this_as = past_as[key_or_as]
+    if len( this_as["as_orig"] ) == 1: # {key: {func:..., kwargs:..., as:key2}
+        key_to_pop = this_as["input_key"]
+
+        
+    # crashes
+    elif conflict == "raise":
+        raise ValueError(f"new {key_or_as=} cannot replace that from {this_as['input_key']} ('as': {this_as['as_orig']})")
+    # ignores
+    elif conflict in ["warn", "skip"]:
+        if conflict == "warn":
+            import warnings
+            warnings.warn(f"new {key_or_as=} cannot replace that from {this_as['input_key']} ('as': this_as['as_orig']). This is skiped. Potentially leads to conflict.")
+            
+        key_to_pop = None
+        
+    # wrong.
+    else:
+        raise ValueError(f"cannot parse the input {as_conflict=} option.")
+
+    return key_to_pop
+
+def _get_valid_model_(model, as_conflict="raise"):
+    """ """
+    from copy import deepcopy
+    out_model = {} # what is returned
+    model = deepcopy(model) # do not touch the input
+    # make sure kwargs exists.
+    # make sure as=["k"] overwrites former "k"
+    
+    past_keys = []
+    past_as = {}
+    for key, value in model.items():
+        # make sure kwargs exists.
+        if "kwargs" not in value.keys():
+            value["kwargs"] = {}
+
+        #
+        # one of the new as or key overwrites known key or former as.
+        #
+        key_to_pop = _as_to_key_to_pop_(key, past_as, conflict=as_conflict)
+        if key_to_pop is not None:
+            _ = out_model.pop(key_to_pop)
+            
+        for as_k in np.atleast_1d(value.get('as', [])):
+            if as_k in past_keys:
+                _ = out_model.pop(as_k)
+            else:
+                key_to_pop = _as_to_key_to_pop_(as_k, past_as, conflict=as_conflict)
+                if key_to_pop is not None:
+                    _ = out_model.pop(key_to_pop)
+                
+
+        past_keys.append(key)
+        as_list = value.get('as', None)
+        if as_list is not None:
+            array_keys = list( np.atleast_1d(as_list) )
+            for as_k in array_keys:
+                past_as[as_k] = {"input_key": key, # in the modeldict
+                                 "as_orig": array_keys # exists as part of
+                                }
+        # all good.
+        out_model[key] = value
+        
+    return out_model
+
+
 def get_modelcopy(model):
     """ get a 'deep' copy of the model (dict) without using copy.deepmodel """
     import copy
@@ -82,11 +155,12 @@ def get_modeldf(model, explode=True):
         modeldf = modeldf.join(f_) 
 
     # now the entry connections
-    modeldf["input"] = modeldf["kwargs"].apply(lambda x: [] if type(x) is not dict else \
+    modeldf["input"] = modeldf.get("kwargs").apply(lambda x: [] if type(x) is not dict else \
                                                    [l.split("@")[-1].split(" ")[0]
                                                     for l in x.values() if type(l) is str \
                                                     and "@" in l]
                                               )
+
     # number of internal dependencies
     modeldf["ndeps"] = modeldf["input"].apply(len)
     
@@ -161,6 +235,7 @@ def make_model_direct(model, missing_entries="raise", verbose=False, prior_input
     # get the sorted model
     if len(prior_inputs)>0:
         used_entries = [e_ for e_ in used_entries if e_ not in prior_inputs]
+        
     sorted_inname = df.loc[used_entries]["model_name"].unique()
     direct_model = {k:model[k] for k in sorted_inname}
     return direct_model
