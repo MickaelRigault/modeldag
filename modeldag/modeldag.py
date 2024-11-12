@@ -215,7 +215,7 @@ class ModelDAG( object ):
         """
         self.model = self.get_model(**kwargs)
 
-    def get_func_parameters(self, default=False):
+    def get_func_parameters(self, default=False, incl_args=True, fillargs=np.NaN):
         """ get a dictionary with the parameters name of all model functions
         
         Parameters
@@ -235,7 +235,12 @@ class ModelDAG( object ):
                 # ::-1 since kwargs are after args
                 params = inspect.getfullargspec( func ).args[::-1]
                 values = inspect.getfullargspec( func ).defaults[::-1]
-                kwargs_ = dict(zip(params, values))
+                if incl_args:
+                    values_full = [fillargs]*len(params)
+                    values_full[:len(values)] = values
+                    kwargs_ = dict( zip(params, values_full) )
+                else:
+                    kwargs_ = dict( zip(params, values) )
             except:
                 kwargs_ = {}
                 
@@ -250,6 +255,11 @@ class ModelDAG( object ):
             parameters = inspected
         
         return parameters
+
+    def get_func_with_args(self, argname):
+        """ return list of parameter names that have {argname} in their options (args or kwargs) """
+        dict_func = self.get_func_parameters(incl_args=True)
+        return [k for k, v in dict_func.items() if argname in v]
     
     def get_backward_entries(self, name, incl_input=True):
         """ get the list of entries that affects the input on.
