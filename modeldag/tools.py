@@ -45,7 +45,7 @@ def apply_gaussian_noise(errmodel, data):
 # =================== #
 #  model manipulation #
 # =================== #
-def _as_to_key_to_pop_(key_or_as, past_as, conflict="raise"):
+def _as_to_key_to_pop_(key_or_as, past_as, full_aslist=None, conflict="raise"):
     """ """
     if key_or_as not in past_as:
         return None
@@ -54,6 +54,9 @@ def _as_to_key_to_pop_(key_or_as, past_as, conflict="raise"):
     if len( this_as["as_orig"] ) == 1: # {key: {func:..., kwargs:..., as:key2}
         key_to_pop = this_as["input_key"]
 
+    elif full_aslist is not None and np.all( np.in1d(this_as["as_orig"], full_aslist) ):
+        # all as of former cases are replaced at once.
+        key_to_pop = this_as["input_key"]
         
     # crashes
     elif conflict == "raise":
@@ -93,14 +96,16 @@ def _get_valid_model_(model, as_conflict="raise"):
         key_to_pop = _as_to_key_to_pop_(key, past_as, conflict=as_conflict)
         if key_to_pop is not None:
             _ = out_model.pop(key_to_pop)
-            
-        for as_k in np.atleast_1d(value.get('as', [])):
+
+        as_keys = np.atleast_1d(value.get('as', []))
+        for as_k in as_keys:
             if as_k in past_keys:
                 _ = out_model.pop(as_k)
+                
             else:
-                key_to_pop = _as_to_key_to_pop_(as_k, past_as, conflict=as_conflict)
+                key_to_pop = _as_to_key_to_pop_(as_k, past_as, conflict=as_conflict, full_aslist=as_keys)
                 if key_to_pop is not None:
-                    _ = out_model.pop(key_to_pop)
+                    _ = out_model.pop(key_to_pop, None)
                 
 
         past_keys.append(key)
