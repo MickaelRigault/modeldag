@@ -215,7 +215,7 @@ class ModelDAG( object ):
         """
         self.model = self.get_model(**kwargs)
 
-    def get_func_parameters(self, default=False, incl_args=True, fillargs=np.NaN):
+    def get_func_parameters(self, default=False, incl_args=True, fillargs=np.nan):
         """ get a dictionary with the parameters name of all model functions
         
         Parameters
@@ -607,7 +607,7 @@ class ModelDAG( object ):
 
     @property
     def entry_dependencies(self):
-        """ pandas series of entry input dependencies (exploded) | NaN is not entry """
+        """ pandas series of entry input dependencies (exploded) | nan is not entry """
         modeldf = self.get_modeldf()
         return modeldf["input"]
 
