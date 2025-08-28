@@ -179,7 +179,9 @@ class ModelDAG( object ):
         ag.draw(fileout)
         return SVG(fileout)
 
-    def get_model(self, prior_inputs=None, missing_entries="raise", **kwargs):
+    def get_model(self, prior_inputs=None, missing_entries="raise",
+                      seed="allowed",
+                      **kwargs):
         """ get a copy of the model 
         
         Parameters
@@ -202,6 +204,7 @@ class ModelDAG( object ):
         direct_model = make_model_direct( model,
                                           missing_entries=missing_entries,
                                           prior_inputs=prior_inputs)
+                
         return direct_model
     
     def change_model(self, **kwargs):
@@ -399,7 +402,8 @@ class ModelDAG( object ):
         return self.draw(size, limit_to_entries=limit_to_entries, data=data)
 
     
-    def draw(self, size=None, limit_to_entries=None, data=None, **kwargs):
+    def draw(self, size=None, limit_to_entries=None, data=None,
+                 allowed_legacyseed=True, **kwargs):
         """ draw a random sampling of the parameters following
         the model DAG
 
@@ -428,10 +432,12 @@ class ModelDAG( object ):
             prior_inputs = None
             
         model = self.get_model(prior_inputs=prior_inputs, **kwargs)
+
         return self._draw(model, size=size, limit_to_entries=limit_to_entries,
+                              allowed_legacyseed=allowed_legacyseed,
                               data=data)
     
-    def draw_param(self, name=None, func=None, size=None, xx=None, **kwargs):
+    def draw_param(self, name=None, func=None, size=None, xx=None, allowed_legacyseed=True, **kwargs):
         """ draw a single entry of the model
 
         Parameters
@@ -457,6 +463,12 @@ class ModelDAG( object ):
         """        
         # Flexible origin of the sampling method
         func = self._parse_input_func(name=name, func=func)
+        if "MT19937" in str(func) and allowed_legacyseed:
+            #state = np.random.get_state()
+            np.random.seed()
+            #np.random.set_state(state)
+            #_ = np.random.seed() # empty seed, just need to set it
+
         
         # Check the function parameters
         try:
@@ -487,7 +499,8 @@ class ModelDAG( object ):
             prop["xx"] = xx
 
         # Draw it.
-        draw_ = func(**{**prop, **kwargs})
+        actual_prop = prop | kwargs
+        draw_ = func( **actual_prop )
         if "xx" in func_arguments: # draw_ was actually a pdf
             xx_, pdf_ = draw_
             draw_ = self.draw_from_pdf(pdf_, xx_, size)
@@ -513,7 +526,8 @@ class ModelDAG( object ):
         return choices
     
 
-    def _draw(self, model, size=None, limit_to_entries=None, data=None):
+    def _draw(self, model, size=None, limit_to_entries=None, data=None,
+                  allowed_legacyseed=True):
         """ core method converting model into a DataFrame (interp) """
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
@@ -550,7 +564,9 @@ class ModelDAG( object ):
             prop = {**params, **inprop}
             # 
             # Draw it
-            samples = np.asarray(self.draw_param(param_name, **prop))
+            samples = np.asarray(self.draw_param(param_name,
+                                                 allowed_legacyseed=allowed_legacyseed,
+                                                 **prop))
 
             # and feed
             output_name = param_model.get("as", param_name)
