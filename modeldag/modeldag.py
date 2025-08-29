@@ -6,7 +6,7 @@ import warnings
 #__all__ = ["ModelDAG"]
 
 
-def draw_ndpdf(xx, ndpdf, size=1):
+def draw_ndpdf(xx, ndpdf, size=1, rng=None):
     """ draw n-parameters for joint multivariate pdf
     
     Parameters
@@ -30,7 +30,8 @@ def draw_ndpdf(xx, ndpdf, size=1):
     xx_flatten = xx.reshape(xxshape, xx.shape[-1])
     # shape of ndpdf: (ntarget, *xx.shape[:-1])
     ndpdf_flatten = ndpdf.reshape(ndpdf.shape[0], np.prod(xx.shape[:-1]))
-    drawn_indexes = [np.random.choice(xx_index, size=size, p=pdf_/pdf_.sum())
+    rng = np.random.default_rng(rng)
+    drawn_indexes = [rng.choice(xx_index, size=size, p=pdf_/pdf_.sum())
                      for pdf_ in ndpdf_flatten]
     return xx_flatten[np.hstack(drawn_indexes)].T
 
@@ -403,7 +404,7 @@ class ModelDAG( object ):
 
     
     def draw(self, size=None, limit_to_entries=None, data=None,
-                 allowed_legacyseed=True, **kwargs):
+             rng=None, **kwargs):
         """ draw a random sampling of the parameters following
         the model DAG
 
@@ -434,10 +435,10 @@ class ModelDAG( object ):
         model = self.get_model(prior_inputs=prior_inputs, **kwargs)
 
         return self._draw(model, size=size, limit_to_entries=limit_to_entries,
-                              allowed_legacyseed=allowed_legacyseed,
+                              rng=rng,
                               data=data)
     
-    def draw_param(self, name=None, func=None, size=None, xx=None, allowed_legacyseed=True, **kwargs):
+    def draw_param(self, name=None, func=None, size=None, xx=None, rng=None, **kwargs):
         """ draw a single entry of the model
 
         Parameters
@@ -463,13 +464,7 @@ class ModelDAG( object ):
         """        
         # Flexible origin of the sampling method
         func = self._parse_input_func(name=name, func=func)
-        if "MT19937" in str(func) and allowed_legacyseed:
-            #state = np.random.get_state()
-            np.random.seed()
-            #np.random.set_state(state)
-            #_ = np.random.seed() # empty seed, just need to set it
-
-        
+               
         # Check the function parameters
         try:
             func_arguments = list(inspect.getfullargspec(func).args)
@@ -482,52 +477,60 @@ class ModelDAG( object ):
         if len(actual_args) == 0 and size is not None: # pure *arg, **kwargs func. like scipy's rvs() | assume size
             func_arguments += ["size"] # add size.
             
-
-                
         # And set the correct parameters that may be missing
         prop = {}
+
+        # does the function expects a random number generator
+        if "rng" in func_arguments:
+            prop["rng"] = rng
+
+        # does the function expects a size ?
         if "size" in func_arguments:
             prop["size"] = size
-            
-        if "func" in func_arguments and func is not None: # means you left the default
+
+        # did you overwrite the default func ?
+        if "func" in func_arguments and func is not None: 
             prop["func"] = func
 
+        # is it a pdf-like func
         if "xx" in func_arguments and xx is not None: # if xx is None
             if type(xx) == str: # assumed r_ input
                 xx = eval(f"np.r_[{xx}]")
                 
             prop["xx"] = xx
 
-        # Draw it.
+        # Ready. Draw it.
         actual_prop = prop | kwargs
         draw_ = func( **actual_prop )
         if "xx" in func_arguments: # draw_ was actually a pdf
             xx_, pdf_ = draw_
-            draw_ = self.draw_from_pdf(pdf_, xx_, size)
+            draw_ = self.draw_from_pdf(pdf_, xx_, size, rng=rng)
             
         return draw_
             
     @staticmethod
-    def draw_from_pdf(pdf, xx, size):
+    def draw_from_pdf(pdf, xx, size, rng=None):
         """ randomly draw from xx N=size elements following the pdf. """
         if type(xx) == str: # assumed r_ input
             xx = eval(f"np.r_[{xx}]")
 
         pdf = np.squeeze(pdf) # shape -> (1, size) -> (size,)
-        
+
+        # load a random number generator with input 'seed/rng'
+        rng = np.random.default_rng(rng)
         if len( pdf.shape ) == 2:
-            choices = np.hstack([np.random.choice(xx, size=1, p=pdf_/pdf_.sum())
+            choices = np.hstack([rng.choice(xx, size=1, p=pdf_/pdf_.sum())
                            for pdf_ in pdf])
         elif len( pdf.shape ) == 3: # assumed list of multivariate
-            choices = draw_ndpdf(xx, pdf) # not size.
+            choices = draw_ndpdf(xx, pdf, rng=rng) # not size.
         else:
-            choices = np.random.choice(xx, size=size, p=pdf/pdf.sum())
+            choices = rng.choice(xx, size=size, p=pdf/pdf.sum())
 
         return choices
     
 
     def _draw(self, model, size=None, limit_to_entries=None, data=None,
-                  allowed_legacyseed=True):
+                  rng=None):
         """ core method converting model into a DataFrame (interp) """
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
@@ -542,6 +545,7 @@ class ModelDAG( object ):
         # The draw loop
         #
         for param_name, param_model in model.items():
+            
             if limit_to_entries is not None and param_name not in limit_to_entries:
                 continue
 
@@ -561,11 +565,11 @@ class ModelDAG( object ):
             inprop["func"] = param_model.get("func", None)
             
             # update the general properties for that of this parameters
-            prop = {**params, **inprop}
+            prop = params | inprop
             # 
             # Draw it
             samples = np.asarray(self.draw_param(param_name,
-                                                 allowed_legacyseed=allowed_legacyseed,
+                                                 rng=rng,
                                                  **prop))
 
             # and feed

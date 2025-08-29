@@ -2,7 +2,7 @@ import pandas
 import numpy as np
 
 
-def apply_gaussian_noise(errmodel, data):
+def apply_gaussian_noise(errmodel, data, rng=None):
     """ apply gaussian noise to current entries.
 
     Parameters
@@ -34,7 +34,9 @@ def apply_gaussian_noise(errmodel, data):
 
     # Build the actual modeldag: {k}_err and resulting {k} from {k}_true and {k}_err
     errmodel = {k+"_err":v for k,v in errmodel.items()}
-    offsetmodel = {k: {"func": np.random.normal,
+
+    rng = np.random.default_rng(rng)
+    offsetmodel = {k: {"func": rng.normal,
                        "kwargs":{"loc":f"@{k}_true", "scale":f"@{k}_err"}} 
                    for k in key_to_change}
     
