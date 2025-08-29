@@ -16,6 +16,14 @@ def draw_ndpdf(xx, ndpdf, size=1, rng=None):
         
     ndpdf: array
         pdf of the multivariates. format: (ntargets, nx, ny)
+
+    rng : None, int, (Bit)Generator, optional
+        seed for the random number generator.
+        (doc adapted from numpy's `np.random.default_rng` docstring. 
+        See that documentation for details.)
+        If None, an unpredictable entropy will be pulled from the OS.
+        If an ``int``, (>0), it will set the initial `BitGenerator` state.
+        If a `(Bit)Generator`, it will be returned as a `Generator` unaltered.
                  
     Returns
     -------
@@ -420,6 +428,14 @@ class ModelDAG( object ):
         data: pandas.DataFrame
             starting point for the draw.
 
+        rng : None, int, (Bit)Generator, optional
+            seed for the random number generator.
+            (doc adapted from numpy's `np.random.default_rng` docstring. 
+            See that documentation for details.)
+            If None, an unpredictable entropy will be pulled from the OS.
+            If an ``int``, (>0), it will set the initial `BitGenerator` state.
+            If a `(Bit)Generator`, it will be returned as a `Generator` unaltered.
+
         **kwargs goes to get_model()
 
         Returns
@@ -453,9 +469,17 @@ class ModelDAG( object ):
             number of line to be draw
 
         xx: str, array
-           provide this *if* the func returns the pdf and not sampling.
-           xx defines where the pdf will be evaluated.
-           if xx is a string, it will be assumed to be a np.r_ entry (``np.r_[xx]``)
+            provide this *if* the func returns the pdf and not sampling.
+            xx defines where the pdf will be evaluated.
+            if xx is a string, it will be assumed to be a np.r_ entry (``np.r_[xx]``)
+
+        rng : None, int, (Bit)Generator, optional
+            seed for the random number generator.
+            (doc adapted from numpy's `np.random.default_rng` docstring. 
+            See that documentation for details.)
+            If None, an unpredictable entropy will be pulled from the OS.
+            If an ``int``, (>0), it will set the initial `BitGenerator` state.
+            If a `(Bit)Generator`, it will be returned as a `Generator` unaltered.
 
         Returns
         -------
@@ -510,7 +534,23 @@ class ModelDAG( object ):
             
     @staticmethod
     def draw_from_pdf(pdf, xx, size, rng=None):
-        """ randomly draw from xx N=size elements following the pdf. """
+        """ randomly draw from xx N=size elements following the pdf. 
+
+        Parameters
+        ----------
+        
+        rng : None, int, (Bit)Generator, optional
+            seed for the random number generator.
+            (doc adapted from numpy's `np.random.default_rng` docstring. 
+            See that documentation for details.)
+            If None, an unpredictable entropy will be pulled from the OS.
+            If an ``int``, (>0), it will set the initial `BitGenerator` state.
+            If a `(Bit)Generator`, it will be returned as a `Generator` unaltered.
+
+        Returns
+        -------
+        array (shape as pdf)
+        """
         if type(xx) == str: # assumed r_ input
             xx = eval(f"np.r_[{xx}]")
 
@@ -531,7 +571,19 @@ class ModelDAG( object ):
 
     def _draw(self, model, size=None, limit_to_entries=None, data=None,
                   rng=None):
-        """ core method converting model into a DataFrame (interp) """
+        """ core method converting model into a DataFrame (interp) 
+
+        Parameters
+        ----------
+        rng : None, int, (Bit)Generator, optional
+            seed for the random number generator.
+            (doc adapted from numpy's `np.random.default_rng` docstring. 
+            See that documentation for details.)
+            If None, an unpredictable entropy will be pulled from the OS.
+            If an ``int``, (>0), it will set the initial `BitGenerator` state.
+            If a `(Bit)Generator`, it will be returned as a `Generator` unaltered.
+
+        """
         if size == 0:
             columns = list(np.hstack([v.get("as", name) for name, v in model.items()]))
             return pandas.DataFrame(columns=columns)
