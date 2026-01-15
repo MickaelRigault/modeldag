@@ -22,6 +22,7 @@ def apply_gaussian_noise(errmodel, data, rng=None):
     self or dataframe
         - self if data is None
         - dataframe otherwise.
+
     """
     from . import ModelDAG
     
@@ -56,7 +57,7 @@ def _as_to_key_to_pop_(key_or_as, past_as, full_aslist=None, conflict="raise"):
     if len( this_as["as_orig"] ) == 1: # {key: {func:..., kwargs:..., as:key2}
         key_to_pop = this_as["input_key"]
 
-    elif full_aslist is not None and np.all( np.in1d(this_as["as_orig"], full_aslist) ):
+    elif full_aslist is not None and np.all( np.isin(this_as["as_orig"], full_aslist) ):
         # all as of former cases are replaced at once.
         key_to_pop = this_as["input_key"]
         
@@ -220,7 +221,7 @@ def make_model_direct(model, missing_entries="raise", verbose=False, prior_input
         left_entries = [k for k in entries if k not in used_entries]
         if verbose:
             print(f"left entries: {left_entries}")
-        next_entries = df.loc[left_entries]["input"].apply(lambda x: np.in1d(x, used_entries).all())
+        next_entries = df.loc[left_entries]["input"].apply(lambda x: np.isin(x, used_entries).all())
         next_entries = list(next_entries[next_entries].index.astype(str))
         if verbose:
             print(f"next entries: {next_entries}")
